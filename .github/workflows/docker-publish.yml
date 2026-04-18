@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - claude/deploy-vercel-5TXlD
+      - docker-deploy
       - main
     paths-ignore:
       - '**.md'
@@ -43,7 +44,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'claude/deploy-vercel-5TXlD') }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/docker-deploy' || github.ref == 'refs/heads/main' || github.ref == format('refs/heads/{0}', 'claude/deploy-vercel-5TXlD') }}
             type=sha,prefix=,format=short
             type=ref,event=branch
 
