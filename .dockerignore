@@ -1,0 +1,42 @@
+.git
+.github
+.gitignore
+.dockerignore
+node_modules
+**/node_modules
+
+# Mobile / Expo client (not deployed on VPS)
+app/
+src/
+assets/
+scripts/
+app.json
+package.json
+package-lock.json
+tsconfig.json
+
+# Docs
+*.md
+README*
+
+# Dev / build artifacts
+.expo/
+.expo-shared/
+dist/
+build/
+web-build/
+.env
+.env.*
+*.log
+.DS_Store
+.vscode/
+.idea/
+desktop.ini
+
+# Server-local artifacts that must not ship in the image
+server/node_modules
+server/dlc-manager.db
+server/dlc-manager.db-shm
+server/dlc-manager.db-wal
+server/uploads/
+server/index-dev.js

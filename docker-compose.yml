@@ -1,0 +1,41 @@
+services:
+  app:
+    image: ghcr.io/baptisteapollo/app_soldes:latest
+    container_name: dlc-manager
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      JWT_SECRET: "${JWT_SECRET:-CHANGE_ME_IN_HOSTINGER_ENV}"
+      DB_PATH: "/data/dlc-manager.db"
+      UPLOADS_DIR: "/app/server/uploads"
+      NODE_ENV: "production"
+    volumes:
+      - dlc_data:/data
+      - dlc_uploads:/app/server/uploads
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: dlc-watchtower
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_INCLUDE_RESTARTING: "true"
+      WATCHTOWER_POLL_INTERVAL: "300"
+      TZ: "Europe/Paris"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  dlc_data:
+  dlc_uploads:

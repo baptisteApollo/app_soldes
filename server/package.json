@@ -4,15 +4,14 @@
   "description": "Backend server for DLC Manager mobile app",
   "main": "index.js",
   "scripts": {
-    "start": "node index-dev.js",
-    "prod": "node index.js",
+    "start": "node index.js",
     "dev": "node --watch index-dev.js"
   },
   "dependencies": {
+    "better-sqlite3": "^11.3.0",
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
-    "sqlite3": "^6.0.1"
+    "multer": "^1.4.5-lts.1"
   }
 }

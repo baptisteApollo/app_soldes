@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const createSyncRoutes = require('./sync');
@@ -12,30 +12,30 @@ const DeviceRegistry = require('./deviceRegistry');
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
-const PORT = 3000;
-const JWT_SECRET = 'dlc-manager-secret-key-change-in-production';
-const DB_PATH = path.join(__dirname, 'dlc-manager.db');
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const PORT = parseInt(process.env.PORT, 10) || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  console.warn('WARNING: JWT_SECRET not set, using insecure default. DO NOT USE IN PRODUCTION.');
+  return 'dlc-manager-secret-key-change-in-production';
+})();
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'dlc-manager.db');
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
 
-// Ensure uploads directory exists
+// Ensure uploads and DB parent directories exist (volumes empty on first boot)
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
+const dbDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
 
 // ---------------------------------------------------------------------------
-// Database setup - Using sqlite3 (async compatible)
+// Database setup - better-sqlite3 (synchronous API)
 // ---------------------------------------------------------------------------
-const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('Database connection error:', err);
-  } else {
-    console.log('✅ Database connected');
-  }
-});
-
-// Enable foreign keys
-db.run('PRAGMA foreign_keys = ON');
-db.run('PRAGMA journal_mode = WAL');
+const db = new Database(DB_PATH);
+db.pragma('foreign_keys = ON');
+db.pragma('journal_mode = WAL');
+console.log('Database connected at', DB_PATH);
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -417,6 +417,11 @@ app.get('/api/sync/changes', authenticate, (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// ---------------------------------------------------------------------------
+// Health check
+// ---------------------------------------------------------------------------
+app.get('/health', (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
 // ---------------------------------------------------------------------------
 // Error handling
