@@ -1,0 +1,64 @@
+# =============================================================================
+# app_soldes — compose file for Hostinger Docker Manager.
+#
+# What it does:
+#   - Pulls the pre-built image from GitHub Container Registry (GHCR)
+#     (the image is rebuilt by .github/workflows/docker-publish.yml on every push).
+#   - Watchtower polls GHCR every 30s and redeploys automatically when a new
+#     image tag :latest is published — no SSH, no manual pull on the VPS.
+#
+# First-time setup:
+#   1. Make sure the GHCR image is PUBLIC:
+#        https://github.com/users/baptisteapollo/packages/container/app_soldes/settings
+#        -> Change visibility -> Public
+#      (or keep it private and add a docker login step on the VPS).
+#   2. In Hostinger Docker Manager, paste the raw URL of this file:
+#        https://raw.githubusercontent.com/baptisteapollo/app_soldes/claude/deploy-vercel-5TXlD/docker-compose.yml
+#   3. App is reachable on port 8080 of the VPS. Point your domain / reverse
+#      proxy at it. Camera / scanner features require HTTPS.
+# =============================================================================
+services:
+  app:
+    image: ghcr.io/baptisteapollo/app_soldes:latest
+    container_name: app_soldes
+    restart: unless-stopped
+    ports:
+      - "8080:3000"
+    volumes:
+      - app_data:/data
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATA_DIR: /data
+      DB_PATH: /data/dlc-manager.db
+      UPLOADS_DIR: /data/uploads
+      # Optional — if unset the server generates one and persists it to the volume.
+      # JWT_SECRET: "replace-me-with-a-long-random-string"
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - require('http').get('http://127.0.0.1:3000/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: app_soldes_watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_POLL_INTERVAL: "30"
+      WATCHTOWER_INCLUDE_RESTARTING: "true"
+      TZ: Europe/Paris
+
+volumes:
+  app_data:

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const sqlite3 = require('sqlite3').verbose();
@@ -10,16 +11,29 @@ const ConflictResolver = require('./conflictResolver');
 const DeviceRegistry = require('./deviceRegistry');
 
 // ---------------------------------------------------------------------------
-// Configuration
+// Configuration (env-driven so the same image works in Docker and locally)
 // ---------------------------------------------------------------------------
-const PORT = 3000;
-const JWT_SECRET = 'dlc-manager-secret-key-change-in-production';
-const DB_PATH = path.join(__dirname, 'dlc-manager.db');
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const PORT = Number(process.env.PORT || 3000);
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'dlc-manager.db');
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(DATA_DIR, 'uploads');
+const PUBLIC_DIR = path.join(__dirname, 'public');
 
-// Ensure uploads directory exists
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+// JWT secret: env var in prod; otherwise persist a random one to DATA_DIR
+// so restarts don't invalidate every issued token.
+const SECRET_FILE = path.join(DATA_DIR, '.jwt-secret');
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  if (fs.existsSync(SECRET_FILE)) {
+    JWT_SECRET = fs.readFileSync(SECRET_FILE, 'utf8').trim();
+  } else {
+    JWT_SECRET = crypto.randomBytes(48).toString('hex');
+    fs.writeFileSync(SECRET_FILE, JWT_SECRET, { mode: 0o600 });
+    console.warn('[warn] JWT_SECRET not set — generated one at', SECRET_FILE);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -195,9 +209,17 @@ const syncRouter = express.Router();
 app.use(cors());
 app.use(express.json());
 
+app.get('/health', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
+
 // Register sync routes
 createSyncRoutes(syncRouter, db, conflictResolver, deviceRegistry);
 app.use(syncRouter);
+
+// Serve the Expo web bundle if it was copied in at build time
+if (fs.existsSync(PUBLIC_DIR)) {
+  app.use(express.static(PUBLIC_DIR));
+  app.get(/^(?!\/api\/).*/, (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+}
 
 // ---------------------------------------------------------------------------
 // Auth middleware
@@ -432,6 +454,6 @@ app.use((err, _req, res, _next) => {
 // ---------------------------------------------------------------------------
 // Start server
 // ---------------------------------------------------------------------------
-app.listen(PORT, () => {
-  console.log(`DLC Manager server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`DLC Manager server running on http://0.0.0.0:${PORT}`);
 });

@@ -1,0 +1,37 @@
+**/node_modules
+**/.expo
+**/.expo-shared
+**/dist
+**/build
+**/.next
+**/coverage
+
+.git
+.github
+.vscode
+.idea
+.claude
+
+**/desktop.ini
+**/Thumbs.db
+**/.DS_Store
+
+**/npm-debug.log*
+**/yarn-error.log*
+**/*.log
+
+# Docs — not needed inside the image
+*.md
+IMPLEMENTATION_CHECKLIST.md
+NOTIFICATIONS_FIX.md
+SESSION_SUMMARY.md
+SYNC_GUIDE.md
+
+# Server runtime state (bind-mount or volume holds this)
+server/uploads
+server/dlc-manager.db*
+server/*.db
+server/*.db-journal
+
+# Deploy-only files (not needed in the container)
+deploy/.env
